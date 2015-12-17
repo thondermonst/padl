@@ -1,16 +1,21 @@
 {
-    "name": "diesonne/padl",
-    "description": "licensing for php",
-    "type": "library",
-    "require": {
-        "php": ">=5.3.0"
-    },
-    "license": "LGPL-2.1",
-    "authors": [
-        {
-            "name": "Rafael Goulart",
-            "email": "rafaelgou@rgou.net"
-        }
-    ],
-    "minimum-stability": "dev"
+  "name": "diesonne/padl",
+  "description": "licensing for php",
+  "type": "library",
+  "require": {
+    "php": ">=5.3.0"
+  },
+  "license": "LGPL-2.1",
+  "authors": [
+    {
+      "name": "Rafael Goulart",
+      "email": "rafaelgou@rgou.net"
+    }
+  ],
+  "minimum-stability": "dev",
+  "autoload": {
+    "classmap": [
+      "src/License"
+    ]
+  }
 }
