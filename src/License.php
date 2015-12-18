@@ -306,7 +306,7 @@ class License {
           $data['DATE']['HUMAN']['END'] = date($this->dateString, $data['DATE']['END']);
         }
         if ($this->useServer) {
-          $mac = in_array($data['SERVER']['MAC'], $this->mac);
+          $mac = in_array($data['SERVER']['MAC'], $this->getMacAddress(FALSE));
           $path = count(array_diff($this->serverInfo, $data['SERVER']['PATH'])) <= $this->allowedServerDifs;
           $domain = $this->compareDomainIp($data['SERVER']['DOMAIN'], $this->ips);
           $ip = count(array_diff($this->ips, $data['SERVER']['IP'])) <= $this->allowedIpDifs;
@@ -317,7 +317,10 @@ class License {
           }
 
           // check if local
-          $local = $this->allowLocal && (in_array('127.0.0.1', $data['SERVER']['IP']) || $data['PATH']['SERVER_ADDR'] == '127.0.0.1' || $data['PATH']['HTTP_HOST'] == '127.0.0.1');
+          $local = $this->allowLocal && (in_array(
+                '127.0.0.1',
+                $data['SERVER']['IP']
+              ) || $data['PATH']['SERVER_ADDR'] == '127.0.0.1' || $data['PATH']['HTTP_HOST'] == '127.0.0.1');
           if (!$local) {
             $data['RESULT'] = 'ILLEGAL_LOCAL';
           }
@@ -542,7 +545,10 @@ class License {
    *
    * @return string Returns random string
    **/
-  protected function generateRandomString($length = 10, $seeds = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890123456789') {
+  protected function generateRandomString(
+    $length = 10,
+    $seeds = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890123456789'
+  ) {
     $str = '';
     $seedsCount = strlen($seeds);
 
@@ -905,7 +911,7 @@ class License {
    * @param bool $limitOne when true we will return only one element
    * @return string Mac address if found
    */
-  protected function getMacAddress($limitOne = FALSE) {
+  protected function getMacAddress($limitOne = TRUE) {
     // open the config file
     $conf = $this->getConfig();
 
@@ -922,13 +928,13 @@ class License {
         if (preg_match("/([0-9a-f][0-9a-f][-:]){5}([0-9a-f][0-9a-f])/i", $line)) {
           $trimmedLine = trim($line);
           // take of the mac addres and return
-          if($limitOne) {
+          if ($limitOne) {
             return trim(substr($trimmedLine, strrpos($trimmedLine, " ")));
           }
           $return[] = trim(substr($trimmedLine, strrpos($trimmedLine, " ")));
         }
       }
-      if(!$limitOne && !empty($return)) {
+      if (!$limitOne && !empty($return)) {
         return $return;
       }
     }
@@ -937,15 +943,31 @@ class License {
       $macDelim = $this->getOsVar('mac', $os);
 
       // get the pos of the os_var to look for
-      $pos = strpos($conf, $macDelim);
-      if ($pos) {
+      $poss = $this->strpos_all($conf, $macDelim);
+      foreach ($poss as $pos) {
         // seperate out the mac address
         $str1 = trim(substr($conf, ($pos + strlen($macDelim))));
-        return trim(substr($str1, 0, strpos($str1, "\n")));
+        if ($limitOne) {
+          return trim(substr($str1, 0, strpos($str1, "\n")));
+        }
+        $macs[] = trim(substr($str1, 0, strpos($str1, "\n")));
+      }
+      if (!$limitOne && !empty($macs)) {
+        return $macs;
       }
     }
     // failed to find the mac address
     return 'MAC_404';
+  }
+
+  private function strpos_all($haystack, $needle) {
+    $offset = 0;
+    $allpos = array();
+    while (($pos = strpos($haystack, $needle, $offset)) !== FALSE) {
+      $offset = $pos + 1;
+      $allpos[] = $pos;
+    }
+    return $allpos;
   }
 
   /**
@@ -963,26 +985,46 @@ class License {
     }
     // get the server specific uris
     $a = array();
-    if (isset($this->serverVars['SERVER_ADDR']) && (!strrpos($this->serverVars['SERVER_ADDR'], '127.0.0.1') || $this->allowLocal)) {
+    if (isset($this->serverVars['SERVER_ADDR']) && (!strrpos(
+          $this->serverVars['SERVER_ADDR'],
+          '127.0.0.1'
+        ) || $this->allowLocal)
+    ) {
       $a['SERVER_ADDR'] = $this->serverVars['SERVER_ADDR'];
     }
     // corrected by Gert-Rainer Bitterlich <bitterlich -at- ima-dresden -dot- de>, Thanks
-    if (isset($this->serverVars['HTTP_HOST']) && (!strrpos($this->serverVars['HTTP_HOST'], '127.0.0.1') || $this->allowLocal)) {
+    if (isset($this->serverVars['HTTP_HOST']) && (!strrpos(
+          $this->serverVars['HTTP_HOST'],
+          '127.0.0.1'
+        ) || $this->allowLocal)
+    ) {
       $a['HTTP_HOST'] = $this->serverVars['HTTP_HOST'];
     }
     if (isset($this->serverVars['SERVER_NAME'])) {
       $a['SERVER_NAME'] = $this->serverVars['SERVER_NAME'];
     }
     if (isset($this->serverVars['PATH_TRANSLATED'])) {
-      $a['PATH_TRANSLATED'] = substr($this->serverVars['PATH_TRANSLATED'], 0, strrpos($this->serverVars['PATH_TRANSLATED'], '/'));
+      $a['PATH_TRANSLATED'] = substr(
+        $this->serverVars['PATH_TRANSLATED'],
+        0,
+        strrpos($this->serverVars['PATH_TRANSLATED'], '/')
+      );
     }
     else {
       if (isset($this->serverVars['SCRIPT_FILENAME'])) {
-        $a['SCRIPT_FILENAME'] = substr($this->serverVars['SCRIPT_FILENAME'], 0, strrpos($this->serverVars['SCRIPT_FILENAME'], '/'));
+        $a['SCRIPT_FILENAME'] = substr(
+          $this->serverVars['SCRIPT_FILENAME'],
+          0,
+          strrpos($this->serverVars['SCRIPT_FILENAME'], '/')
+        );
       }
     }
     if (isset($server['SCRIPT_URI'])) {
-      $a['SCRIPT_URI'] = substr($this->serverVars['SCRIPT_URI'], 0, strrpos($this->serverVars['SCRIPT_URI'], '/'));
+      $a['SCRIPT_URI'] = substr(
+        $this->serverVars['SCRIPT_URI'],
+        0,
+        strrpos($this->serverVars['SCRIPT_URI'], '/')
+      );
     }
 
     // if the number of different uris is less than the required amount,
