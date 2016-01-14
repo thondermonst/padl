@@ -917,6 +917,13 @@ class License {
 
     $os = strtolower(PHP_OS);
     if (substr($os, 0, 3) == 'win') {
+      //try to get non virtual mac adresses
+      $res = null;
+      passthru('padlScriptfilesWin/getPhysicalNetworkAdapterInfoWin.bat',$res);
+
+      //if this fails, try the oldfashioned way
+
+
       // explode the conf into lines to search for the mac
       $lines = explode(PHP_EOL, $conf);
       // seperate the lines for analysis
