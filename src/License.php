@@ -171,7 +171,7 @@ class License {
    * @var number
    */
   protected $allowedIpDifs = 0;
-
+	
   /**
    * Constructor
    *
@@ -306,6 +306,11 @@ class License {
           $data['DATE']['HUMAN']['END'] = date($this->dateString, $data['DATE']['END']);
         }
         if ($this->useServer) {
+          //make sure MAC-addresses are an array
+          $macAddresses = $this->getMacAddress(FALSE);
+          if (!is_array($macAddresses)) {
+            $macAddresses = [$macAddresses];
+          }
           $mac = in_array($data['SERVER']['MAC'], $this->getMacAddress(FALSE));
           $path = count(array_diff($this->serverInfo, $data['SERVER']['PATH'])) <= $this->allowedServerDifs;
           $domain = $this->compareDomainIp($data['SERVER']['DOMAIN'], $this->ips);
@@ -760,7 +765,15 @@ class License {
             $var = '/sbin/ifconfig';
             break;
           case 'mac' :
-            $var = 'HWaddr';
+            $linuxDistroName = $this->getLinuxDistroName();
+            switch (strtolower($linuxDistroName)) {
+              case 'centos linux' :
+                $var = 'ether';
+                break;
+              default:
+                $var = 'HWaddr';
+                break;
+            }
             break;
           case 'ip' :
             $var = 'inet addr:';
@@ -948,16 +961,29 @@ class License {
     else {
       // get the mac delim
       $macDelim = $this->getOsVar('mac', $os);
-
+      if ($os == 'linux') {
+        $linuxDistroName = $this->getLinuxDistroName();
+        // decide the end delimiter by linux distro
+        switch (strtolower($linuxDistroName)) {
+          case 'centos linux' :
+            $endDelim = ' ';
+            break;
+          default :
+            $endDelim = '\n';
+            break;
+        }
+      } else {
+        $endDelim = '\n';
+      }
       // get the pos of the os_var to look for
       $poss = $this->strpos_all($conf, $macDelim);
       foreach ($poss as $pos) {
         // seperate out the mac address
         $str1 = trim(substr($conf, ($pos + strlen($macDelim))));
         if ($limitOne) {
-          return trim(substr($str1, 0, strpos($str1, "\n")));
+          return trim(substr($str1, 0, strpos($str1, $endDelim)));
         }
-        $macs[] = trim(substr($str1, 0, strpos($str1, "\n")));
+        $macs[] = trim(substr($str1, 0, strpos($str1, $endDelim)));
       }
       if (!$limitOne && !empty($macs)) {
         return $macs;
@@ -1041,6 +1067,37 @@ class License {
     }
 
     return $a;
+  }
+
+  /**
+   * getLinuxDistroName
+   * 
+   * determine the Linux distro name by looking in /etc/os-release or similar file
+   * @return string
+   */
+  protected function getLinuxDistroName() {
+    $vars = array();
+    $files = glob('/etc/*-release');
+
+    foreach ($files as $file) {
+      $lines = array_filter(array_map(function($line) {
+                // split value from key
+                $parts = explode('=', $line);
+                // makes sure that "useless" lines are ignored (together with array_filter)
+                if (count($parts) !== 2)
+                  return false;
+                // remove quotes, if the value is quoted
+                $parts[1] = str_replace(array('"', "'"), '', $parts[1]);
+                return $parts;
+              }, file($file)));
+
+      foreach ($lines as $line) {
+        $vars[$line[0]] = $line[1];
+      }
+    }
+
+    // get rid of trailing whitespaces
+    return trim($vars['NAME']);
   }
 
   /**
