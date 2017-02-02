@@ -311,7 +311,7 @@ class License {
           if (!is_array($macAddresses)) {
             $macAddresses = [$macAddresses];
           }
-          $mac = in_array($data['SERVER']['MAC'], $this->getMacAddress(FALSE));
+          $mac = in_array($data['SERVER']['MAC'], $macAddresses);
           $path = count(array_diff($this->serverInfo, $data['SERVER']['PATH'])) <= $this->allowedServerDifs;
           $domain = $this->compareDomainIp($data['SERVER']['DOMAIN'], $this->ips);
           $ip = count(array_diff($this->ips, $data['SERVER']['IP'])) <= $this->allowedIpDifs;
@@ -1081,15 +1081,15 @@ class License {
 
     foreach ($files as $file) {
       $lines = array_filter(array_map(function($line) {
-                // split value from key
-                $parts = explode('=', $line);
-                // makes sure that "useless" lines are ignored (together with array_filter)
-                if (count($parts) !== 2)
-                  return false;
-                // remove quotes, if the value is quoted
-                $parts[1] = str_replace(array('"', "'"), '', $parts[1]);
-                return $parts;
-              }, file($file)));
+        // split value from key
+        $parts = explode('=', $line);
+        // makes sure that "useless" lines are ignored (together with array_filter)
+        if (count($parts) !== 2)
+          return false;
+        // remove quotes, if the value is quoted
+        $parts[1] = str_replace(array('"', "'"), '', $parts[1]);
+        return $parts;
+      }, file($file)));
 
       foreach ($lines as $line) {
         $vars[$line[0]] = $line[1];

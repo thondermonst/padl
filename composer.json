@@ -1,5 +1,5 @@
 {
-  "name": "diesonne/padl",
+  "name": "thondermonst/padl",
   "description": "licensing for php",
   "type": "library",
   "require": {
@@ -8,7 +8,7 @@
   "license": "LGPL-2.1",
   "authors": [
     {
-      "name": "diesonne"
+      "name": "thondermonst"
     }
   ],
   "minimum-stability": "dev",
